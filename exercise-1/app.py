@@ -34,7 +34,7 @@ class Pizza(db.Model):
     order_name = db.Column(db.String(80), unique=False, nullable=False)
     size = db.Column(db.Enum(PizzaSize), nullable=False)
     crust_type = db.Column(db.Enum(CrustType), nullable=False)
-    toppings = db.relationship('PizzaTopping')
+    toppings = db.relationship('PizzaTopping', backref = 'pizza')
     fulfilled = db.Column(db.Boolean, default=False)
 
 class PizzaTopping(db.Model):
@@ -48,44 +48,59 @@ with app.app_context():
 ###############################################
 ### ROUTES
 ###############################################
+toppingVars = ['Soy_Cheese','Mushrooms','Onions','Spinach','Pineapple']
 
 @app.route('/')
 def home():
+
     all_pizzas = Pizza.query.filter_by(fulfilled=False)
     return render_template('home.html', pizza_orders=all_pizzas)
 
 @app.route('/order', methods=['GET'])
 def pizza_order_form():
+
     return render_template(
         'order.html',
         sizes=PizzaSize,
         crust_types=CrustType,
-        toppings=ToppingType)
+        toppings=ToppingType,
+        toppingVars=toppingVars)
 
 @app.route('/order', methods=['POST'])
 def pizza_order_submit():
-    order_name = request.form.get('name')
-    pizza_size_str = request.form.get('size')
+    order_name = request.form.get('order_name')
+    pizza_size_str = request.form.get('pizza_size')
     crust_type_str = request.form.get('crust_type')
-    toppings_list = request.form.get('toppings')
+
+    selected = []
+
+    for i in toppingVars:
+        if request.form.get(i) != None:
+            selected.append(i)
 
     pizza = Pizza(
         order_name=order_name,
         size=pizza_size_str,
         crust_type=crust_type_str)
-    print(pizza.size)
 
-    for topping_str in ToppingType:
-        pizza.toppings.append(PizzaTopping(topping=topping_str))
+    for topping_str in selected:
+        if selected == 'Soy_Cheese':
+            pizza.toppings.append(PizzaTopping(topping_type=ToppingType('Soy Sauce')))
+        else:
+            pizza.toppings.append(PizzaTopping(topping_type=ToppingType(topping_str)))
 
     db.session.add(pizza)
+    db.session.commit()
+    #print(pizza.toppings[0].topping_type.value)
+    print(pizza.id)
 
     flash('Your order has been submitted!')
-    return redirect(url_for('/'))
+    return redirect(url_for('home'))
 
-@app.route('/fulfill', methods=['POST'])
-def fulfill_order():
-    pizza_id = request.form.get('pizza_id')
+
+@app.route('/fulfill/<pizza_id>', methods=['POST'])
+def fulfill_order(pizza_id):
+    #pizza_id = request.form.get('pizza_id')
     pizza = Pizza.query.filter_by(id=pizza_id).one()
 
     pizza.fulfilled = True
