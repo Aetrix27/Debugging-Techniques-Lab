@@ -10,3 +10,4 @@ python-dotenv==0.15.0
 requests==2.25.1
 urllib3==1.26.2
 Werkzeug==1.0.1
+geopy==2.0.0
